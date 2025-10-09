@@ -1,0 +1,791 @@
+theory UtilFSet
+
+  (* Theory grouping a set of lemmas related to finite sets. *)
+
+  use import set.Fset
+  use int.Int
+
+  (* These lemmas are present in Why3's FSet. 
+     They are automatically proved by SMT solvers. 
+     Redefining them allows access to them in manually written proofs in Rocq. *)
+  
+  lemma cardinal_nonneg:
+    forall s: fset 'a. cardinal s >= 0
+    
+  lemma cardinal_empty:
+    forall s: fset 'a. is_empty s <-> cardinal s = 0
+    
+  lemma cardinal_map:
+    forall f: 'a -> 'b, s: fset 'a. cardinal (map f s) <= cardinal s
+    
+  lemma add_mem :
+    forall s: fset 'a, e:'a. mem e s -> s = (add e s)
+    
+  lemma add_map :
+    forall f: 'a -> 'b, s: fset 'a, e:'a. (not (mem e s)) -> map f (add e s) = add (f e) (map f s)
+
+  lemma cardinal_add:
+    forall x: 'a. forall s: fset 'a.
+    if mem x s then cardinal (add x s) = cardinal s
+               else cardinal (add x s) = cardinal s + 1
+        
+ 
+ 
+  (* These lemmas are present in Why3's FsetInt. 
+     They are automatically proved by SMT solvers. 
+     Redefining them allows access to them in manually written proofs in Rocq. *)  
+
+  use import set.FsetInt
+  use int.Int
+              
+  lemma interval_def:
+    forall l r x. mem x (interval l r) <-> l <= x < r
+    
+  lemma min_elt_def:
+    forall s: fset int. not (is_empty s) ->
+    mem (min_elt s) s /\ forall x. mem x s -> min_elt s <= x
+      
+  lemma cardinal_interval:
+    forall l r. cardinal (interval l r) = if l <= r then r - l else 0
+    
+  lemma filter_def:
+    forall s: fset 'a, p: 'a -> bool, x: 'a. mem x (filter s p) <-> mem x s /\ p x
+ 
+ 
+ (* New theorems about min_elt, filter, and interval have been added. 
+    These theorems aim to facilitate reasoning on filtered sets and bounded ranges *)
+    
+  lemma min_filter_interval_1 : forall a,b:int, p: int -> bool.
+    (exists i:int. a<=i<b /\ p i )-> a <= min_elt (filter (interval a b) p) <b
+     
+  lemma min_filter_interval_2 : forall a,b:int, p: int -> bool.
+    (exists i:int. a<=i<b /\ p i )-> p (min_elt (filter (interval a b) p))
+     
+  lemma min_filter_interval_3 : forall a,b:int, p: int -> bool.
+    (exists i:int. a<=i<b /\ p i )-> (forall i:int. a <= i < (min_elt (filter (interval a b) p)) -> not (p i))
+
+end
+
+
+theory UtilSum
+
+  (* Theory grouping a set of lemmas related to sums. *)
+
+  use import int.Int
+  use import seq.Seq
+  use seq.Sum as S
+  use int.Sum as SI
+  
+  lemma sum_ge_elt : forall s : seq int. 
+       (forall i : int. 0<= i < length s ->  s[i] >=0) 
+    -> (forall i : int. 0<= i < length s ->  s[i] <= S.sum s)
+  
+  lemma sum_one : forall k : int. forall f : int -> int.
+    k>=0 -> (forall j:int. 0<= j < k -> f j = 1) ->  SI.sum f 0 k = k
+
+  lemma sum_one_zero : forall k : int. forall f : int -> int.
+    k>=0 -> (forall j:int. 0<= j < k -> f j = 1 \/ f j = 0) ->  SI.sum f 0 k <= k
+
+end
+
+
+theory DNF
+
+  (* Theory describing k-DNFs. *)
+
+  use import set.Fset
+  use import UtilFSet
+  use int.Int
+  use seq.Seq
+  
+  (* type of the features of the DNF *)
+  type feature
+
+  type literal =
+    | Pos feature
+    | Neg feature
+
+  type clause = fset literal
+  type dnf = seq clause (* seq instead of set in order to have an index for each element *)
+  
+  (* All literals in the DNF are defined over the set of features. *)
+  predicate dnf_over_L (d: dnf) (l: fset feature) =
+    forall i: int. 0 <= i < d.length -> subset d[i] (union (map (fun v -> Pos v) l) (map (fun v -> Neg v) l))
+  
+  (* f is a bijection from 0..m-1 to s. *) 
+  predicate is_bijection (m: int) (f: int -> 'a) (s: fset 'a) =
+  (* 1. Well-defined domain *)
+  m >= 0
+  (* 2. Image in s *)
+  /\ (forall i: int. 0 <= i < m -> mem (f i) s)
+  (* 3. Surjectivity: every element of s is the image of some i *)
+  /\ (forall x: 'a. mem x s -> exists i: int. 0 <= i < m /\ f i = x)
+  (* 4. Injectivity *)
+  /\ (forall i1 i2: int. 0 <= i1 < m -> 0 <= i2 < m -> f i1 = f i2 -> i1 = i2)
+  (* 5. Same cardinality *)
+  /\ cardinal s = m
+  
+  
+  (* The original problem is defined by:
+      d: a DNF
+      features: the set of features over which d is defined
+      k: a constant such that d is a k-DNF
+      n: the number of terms in d
+      m: the number of literals, that is, twice the cardinality of features
+      num_to_literal : a bijection from 0..m-1 to the set of literals
+  *)
+  type problem =
+    { d : dnf;
+      features : fset feature;
+      k : int;
+      n:int;
+      m:int;
+      num_to_literal : int -> literal}
+  
+  (* Properties that the problem must satisfy to be valid *)
+  predicate problem_valid (input:problem) =
+    let setLiteral = (union (map (fun v -> Pos v) input.features) (map (fun v -> Neg v) input.features)) in
+       input.k>0
+       (* m : he number of literals *)
+    /\ input.m=cardinal setLiteral
+    /\ input.m>=0
+       (* n : the number of terms in d *)
+    /\ input.n=length input.d
+    /\ input.n>=0
+       (* d is a k-DNF *)
+    /\ (forall p:int. 0<=p<input.n -> cardinal input.d[p] <= input.k)
+       (* All literals in the DNF are defined over the set of features *)
+    /\ dnf_over_L input.d input.features
+       (* Bijection from 0..m-1 to  setLiteral *)
+    /\ is_bijection input.m input.num_to_literal setLiteral
+  
+  predicate card_map_pos (s:fset feature) = cardinal (map (fun v -> Pos v) s) = cardinal s
+  predicate card_map_neg (s:fset feature) = cardinal (map (fun v -> Neg v) s) = cardinal s
+  
+  clone set.FsetInduction as FSIPos with
+    type t = feature, predicate p =card_map_pos
+  
+  clone set.FsetInduction as FSINeg with
+    type t = feature, predicate p =card_map_neg
+
+
+  lemma not_mem_map_pos : forall s:fset feature, l:feature. not (mem l s) -> not (mem (Pos l) (map (fun v -> Pos v) s))
+  lemma not_mem_map_neg : forall s:fset feature, l:feature. not (mem l s) -> not (mem (Neg l) (map (fun v -> Neg v) s))
+
+  lemma card_map_pos :  forall s:fset feature. cardinal (map (fun v -> Pos v) s) = cardinal s
+  lemma card_map_neg :  forall s:fset feature. cardinal (map (fun v -> Neg v) s) = cardinal s
+  
+  lemma link_m_feature : forall pb:problem. problem_valid pb -> pb.m = 2*(cardinal pb.features)
+  
+  (* num_to_literal ^-1 *)
+  lemma literal_to_num : forall pb:problem. forall l:literal.forall p: int.
+    problem_valid pb -> 0 <= p < pb.d.length -> mem l pb.d[p]
+    -> exists il:int. 0<= il < pb.m /\ pb.num_to_literal il = l
+
+end
+
+
+theory Nested
+
+  (* Theory describing nested k-DNFs. *)
+
+  use import set.Fset
+  use import int.Int
+  use import seq.Seq
+  use import seq.ToFset
+  use import UtilSum
+  clone export DNF
+  use seq.Sum as S
+  
+  (* A k-DNF is a nested k'-DNF if there exists a witness consisting of a matrix of literals (lm) and a matrix of integers (rpi). 
+  The elements of the rpi matrix indicate which literals from the lm matrix are used for each term of the k-DNF.*)
+  (* lm and rpi are sequences of sequences because they are easier to manipulate than matrices, whose theory is quite limited in Why3 *)
+  type nested_witness = {lm: seq (seq literal) ; rpi : seq (seq int)}
+  
+  (* Properties that the nested_witness must satisfy to be valid *)
+  predicate nested_witness_valid (k':int) (input:problem) (nw:nested_witness) =
+     (* lm is a matrix of size k'*k *)
+     length nw.lm = k'
+  /\ (forall i: int. 0 <= i < length nw.lm -> length nw.lm[i] = input.k)
+     (* rpi is a matrix of size n*k' *)
+  /\ length nw.rpi = input.n
+  /\ (forall p: int. 0 <= p < input.n -> length nw.rpi[p] = k')
+     (* The elements of lm belong to the set of literals derived from the features. *)
+  /\ (forall i,j: int. 
+        0 <= i < length nw.lm 
+     -> 0 <= j < input.k
+     -> mem nw.lm[i][j] (union (map (fun v -> Pos v) input.features) (map (fun v -> Neg v) input.features)))
+    (* All elements of the rpi matrix are positive. *)
+  /\ (forall p: int. (0 <= p < input.n) -> forall i: int.  (0 <= i < k') -> nw.rpi[p][i] >=0)
+  
+  (* A nested_witness is a witness of a nested k'-DNF for a given problem if 
+  the nested_witness is valid,
+  all elements of its rpi matrix are smaller than k', 
+  and if each term of the DNF is exactly defined by lm and rpi.*)
+  predicate is_nested_witness (k':int) (input:problem) (nw : nested_witness) =
+      nested_witness_valid k' input nw
+   /\ (* All elements of the rpi matrix are smaller than k  *) 
+      (forall p: int.  forall i:int. 0 <= p < input.d.length -> 0 <= i < k' ->  nw.rpi[p][i] <= input.k)
+      (* Each term of the DNF d is exactly defined by lm and rpi *)
+   /\ (forall p: int. (0 <= p < input.d.length)  
+      -> forall l:literal. 
+      (mem l input.d[p] <-> exists i,j:int. 0 <= i < k' /\ 0 <=j < nw.rpi[p][i] /\ l = nw.lm[i][j]))
+      
+   
+      
+  (* Quelles propriétés sur les nested en fonction des liens entre k et k' ? *)
+  (* k' >= k -> is_nested -> kapa est k-DNF et donc k'-DNF et kappa barre  est k'-DNF *)
+  (* k' < k -> is_nested -> kappa barre est k'-DNF *)
+  
+  (* Montrer que is_nested_witness => |{lij | 1 <= i <= k' /\ 1<= j <= rpi}| <= k *)
+  (* k-DNF (is_nested_witness k') => kappa est k-DNF  et k' nested *)
+  
+  (* Montrer que is_nested_witness k' => kappa barre est k'-DNF *) 
+  (* PAS GAGNE !  *)
+  
+     
+  lemma lmIndp: forall k':int. forall input:problem. forall nw : nested_witness. 
+    problem_valid input 
+    -> is_nested_witness k' input nw
+    -> forall p: int. (0 <= p < input.d.length)
+    -> forall i: int. (0 <= i < k')
+    -> forall j:int. (0 <=j < nw.rpi[p][i])
+    -> mem nw.lm[i][j] input.d[p]
+      
+  lemma dpInlm : forall k':int. forall input:problem. forall nw : nested_witness. 
+    problem_valid input 
+    -> is_nested_witness k' input nw
+    -> forall p: int. forall l:literal. 0 <= p < input.d.length -> mem l input.d[p] 
+    -> exists i:int. exists j:int. (0 <= i < k') /\ (0 <=j < nw.rpi[p][i]) /\ l=nw.lm[i][j]
+      
+  (* The DNF in a valid problem is a nested k-DNF if there exists a nested_witness for the problem *)
+  predicate is_nested_k_kp_dnf (k':int) (pb:problem) = 
+     problem_valid pb
+  /\ exists nw:nested_witness. is_nested_witness k' pb nw
+      
+
+end
+
+
+
+theory ExampleNested 
+
+  (* Instantiation on an example *)
+  (* Proof that ab \/ ac \/ cb is a nested 2-DNF *)
+  
+  use import set.Fset
+  use import int.Int
+  use import seq.Seq
+  use import seq.ToFset
+  clone export Nested with type feature = string
+  
+  (* Definition of the problem *)
+  
+  constant ab : clause = Fset.add (Pos "a") (Fset.add (Pos "b") Fset.empty)
+  constant ac : clause = Fset.add (Pos "a") (Fset.add (Pos "c") Fset.empty)
+  constant cb : clause = Fset.add (Pos "c") (Fset.add (Pos "b") Fset.empty)
+  constant defd : dnf = cons ab (cons ac (singleton cb))
+  constant deffeature : fset string = Fset.add "a" (Fset.add "b" (Fset.add "c" Fset.empty))
+  
+  (* nested 2-DNF *)
+  (* matrix of literals *)
+  (* a b *)
+  (* c b *)
+  constant lm1 : seq literal = cons (Pos "a") (singleton (Pos "b")) 
+  constant lm2 : seq literal = cons (Pos "c") (singleton (Pos "b")) 
+  constant deflm :seq (seq literal) = cons lm1 (singleton lm2) 
+  (* rpi matrix *)
+  (* 2 0 *)
+  (* 1 1 *)
+  (* 0 2 *)
+  constant r1 : seq int = cons 2 (singleton 0) 
+  constant r2 : seq int = cons 1 (singleton 1) 
+  constant r3 : seq int = cons 0 (singleton 2) 
+  constant r :seq (seq int) = cons r1 (cons r2 (singleton r3)) 
+  
+  constant defk : int = 2
+
+  constant defnum_to_literal : int -> literal = fun i -> if i=0 then Pos "a" else if i=1 then Neg "a" 
+                                                   else if i=2 then  Pos "b" else if i=3 then Neg "b" 
+                                                   else if i=4 then  Pos "c" else Neg "c"
+
+  constant pb : problem = {d=defd; features=deffeature; k =2; n=3; m=6; num_to_literal =defnum_to_literal}
+  constant setLiteral : fset literal = (union (map (fun v -> Pos v) deffeature) (map (fun v -> Neg v) deffeature))
+  
+  (* The problem is valid *)
+  
+    lemma L11 : pb.k>=0
+   
+      lemma L121 : setLiteral = Fset.add (Neg "a") (Fset.add (Neg "b") (Fset.add (Neg "c") (Fset.add (Pos "a") (Fset.add (Pos "b") (Fset.add (Pos "c") Fset.empty)))))
+    lemma L12 : pb.m=cardinal setLiteral
+
+    lemma L13 : pb.m>=0
+
+    lemma L14 : pb.n=length pb.d
+
+    lemma L15 : pb.n>=0
+
+    lemma L16 : (forall p:int. 0<=p<pb.n -> cardinal pb.d[p] <= pb.k)
+
+    lemma L17 :  dnf_over_L pb.d pb.features
+   
+      lemma L181 : pb.m >= 0
+      lemma L182 : (forall i: int. 0 <= i < pb.m -> mem (pb.num_to_literal i) setLiteral)
+        lemma L1831 : 0<= 0 < pb.m /\ pb.num_to_literal 0 = Pos "a"
+        lemma L1832 : 0<= 1 < pb.m /\ pb.num_to_literal 1 = Neg "a"
+        lemma L1833 : 0<= 2 < pb.m /\ pb.num_to_literal 2 = Pos "b"
+        lemma L1834 : 0<= 3 < pb.m /\ pb.num_to_literal 3 = Neg "b"
+        lemma L1835 : 0<= 4 < pb.m /\ pb.num_to_literal 4 = Pos "c"
+        lemma L1836 : 0<= 5 < pb.m /\ pb.num_to_literal 5 = Neg "c"
+      lemma L183 : (forall x: literal. mem x setLiteral -> exists i: int. 0 <= i < pb.m /\ pb.num_to_literal i = x)
+      lemma L184 : (forall i1 i2: int. 0 <= i1 < pb.m -> 0 <= i2 < pb.m -> pb.num_to_literal i1 = pb.num_to_literal i2 -> i1 = i2)
+      lemma L185 : cardinal setLiteral = pb.m
+    lemma L18 : is_bijection pb.m pb.num_to_literal setLiteral
+  
+  lemma L1 : problem_valid pb
+   
+   
+  (* The nested_witness is a witness for the problem *)
+   
+      lemma L211 : length deflm = defk
+      lemma L212 : forall i: int. 0 <= i < length deflm -> length deflm[i] = defk
+      lemma L213 : length r = pb.n
+      lemma L214 : forall i: int. 0 <= i < pb.n -> length r[i] = pb.k
+        lemma L2151 : mem deflm[0][0] setLiteral
+        lemma L2152 : mem deflm[0][1] setLiteral
+        lemma L2153 : mem deflm[1][0] setLiteral
+        lemma L2154 : mem deflm[1][1] setLiteral
+      lemma L215 : forall i,j: int. 0 <= i < length deflm -> 0 <= j < pb.k -> mem deflm[i][j] setLiteral
+        lemma L2161 : r[0][0]=2 /\ r[0][1]=0 /\ r[1][0]=1 /\ r[1][1]=1 /\ r[2][0]=0 /\ r[2][1]=2                
+      lemma L216 : forall p: int. (0 <= p < pb.n) -> forall i: int.  (0 <= i < pb.k) -> r[p][i] >=0
+    lemma L21 :  nested_witness_valid pb.k pb {lm=deflm;rpi=r}
+
+    lemma L22 :  forall p: int.  forall i:int. 0 <= p < pb.d.length -> 0 <= i < pb.k ->  r[p][i] <= pb.k
+
+      lemma L231 : mem deflm[0][0] pb.d[0] 
+      lemma L232 : mem deflm[0][1] pb.d[0] 
+      lemma L233 : mem deflm[0][0] pb.d[1] 
+      lemma L234 : mem deflm[1][0] pb.d[1] 
+      lemma L235 : mem deflm[1][0] pb.d[2] 
+      lemma L236 : mem deflm[1][1] pb.d[2] 
+    lemma L23 : forall p: int. (0 <= p < pb.d.length)  
+      -> forall l:literal. (mem l pb.d[p] <-> exists i:int. exists j :int. 0 <= i < pb.k /\ 0 <=j <r[p][i] /\ l = deflm[i][j])
+  
+  lemma L2 : is_nested_witness pb.k pb {lm=deflm;rpi=r}
+  
+  goal G : is_nested_k_kp_dnf pb.k pb
+
+end
+
+
+theory SATEncoding
+
+  (* Theory describing SAT encoding. *)
+
+  use int.Int
+  use seq.Seq
+  use set.Fset
+  use seq.ToFset
+  use set.FsetInt
+  use Nested
+  use int.Sum as SI
+
+  (* Variables of the SAT encoding *) 
+  
+  type sat_witness = {
+      x : seq (seq (seq bool)) (* x[i][j][l] is True if the literal ℓi,j is l *);
+      r : seq (seq (seq bool)) (* r[p][i][j] is True if the literal ℓi,j is used in the term p *);
+      t : seq (seq (seq (seq bool))) (* t[p][i][j][l] is True if the literal ℓi,j is l and used in the term p *)
+      }
+  
+  (* Properties that the sat_witness must satisfy to be valid *)
+  predicate sat_witness_valid (k':int) (input:problem) (sw:sat_witness) =
+     (* sizeX *) 
+     length sw.x = k'
+  /\ (forall i:int. 0<=i<k' -> length sw.x[i] = input.k)
+  /\ (forall i,j:int. 0<=i<k' -> 0<=j<k' -> length sw.x[i][j] = input.m)
+     (* sizeR *)
+  /\ length sw.r = input.n
+  /\ (forall p : int. 0<=p<input.n -> length sw.r[p] = k')
+  /\ (forall p,i : int. 0<=p<input.n -> 0<=i<k' -> length sw.r[p][i] = input.k)
+     (* sizeT *)
+  /\ length sw.t = input.n
+  /\ (forall p : int. 0<=p<input.n -> length sw.t[p] = k')
+  /\ (forall p,i : int. 0<=p<input.n -> 0<=i<k' -> length sw.t[p][i] = input.k)
+  /\ (forall p,i,j : int. 0<=p<input.n -> 0<=i<k' -> 0<=j<input.k -> length sw.t[p][i][j] = input.m)
+  
+ 
+  (*** Clause of the SAT encoding ***)
+  
+  (* Each element of the matrix has at least one literal *) 
+  predicate atLeastOneElement (k':int) (input:problem) (sw:sat_witness) = 
+    forall i,j : int. 0<=i<k' -> 0<=j<input.k -> (exists l:int. 0<=l<input.m /\ sw.x[i][j][l]  )
+  
+  (* Each element of the matrix has at most one literal *)
+  predicate atMostOneElement (k':int) (input:problem) (sw:sat_witness) = 
+    forall i,j,a,b : int. 0<=i<k' -> 0<=j<input.k ->  0<=a<input.m -> 0<=b<input.m -> a<>b 
+    -> (not sw.x[i][j][a]) \/ (not sw.x[i][j][b])
+  
+  (* If the element ℓi,j+1 is used in the term p, then the element ℓi,j is also used in this term (Nested) *)
+  predicate nested (k':int) (input:problem) (sw:sat_witness) = 
+    forall i,j,p : int. 0<=i<k' -> 0<=j<input.k-1 ->  0<=p<input.n -> (not sw.r[p][i][j+1]) \/ sw.r[p][i][j]
+  
+  (* Tp,i,j,l is true iff Xi,j,l is true and Rp,i,j is true *)
+  predicate linkTXR (k':int) (input:problem) (sw:sat_witness) =  
+  forall i,j,p,l : int. 0<=i<k' -> 0<=j<input.k ->  0<=p<input.n -> 0<=l<input.m 
+    -> ((not sw.t[p][i][j][l]) \/ sw.x[i][j][l]) 
+    /\ ((not sw.t[p][i][j][l]) \/ sw.r[p][i][j]) 
+    /\ ((not sw.x[i][j][l]) \/ (not sw.r[p][i][j]) \/ sw.t[p][i][j][l])
+   
+  (* Identification of the literals present in a given term and those that are absent *)
+  predicate buildTMem (k':int) (input:problem) (sw:sat_witness) = 
+    forall l,p : int.  0<=l<input.m  -> 0<=p<input.n
+    -> mem (input.num_to_literal l) input.d[p] 
+    -> exists i,j:int. 0<=i<k' /\ 0<=j<input.k /\ sw.t[p][i][j][l]
+    
+  predicate buildTNotMem (k':int) (input:problem) (sw:sat_witness) = 
+    forall l,p : int.  0<=l<input.m  -> 0<=p<input.n
+    -> not (mem (input.num_to_literal l) input.d[p]) 
+    -> forall i,j:int. 0<=i<k' -> 0<=j<input.k -> not sw.t[p][i][j][l]
+  
+  (* A sat_witness is a solution to the SAT encoding of the problem if all its clauses — i.e., all the predicates — are satisfied. *) 
+  predicate is_sat_witness (k':int) (input:problem) (sw:sat_witness)  =  
+       sat_witness_valid k' input sw
+    /\ atLeastOneElement k' input sw
+    /\ atMostOneElement k' input sw
+    /\ nested k' input sw
+    /\ linkTXR k' input sw
+    /\ buildTMem k' input sw
+    /\ buildTNotMem k' input sw
+
+  (* The SAT encoding of a problem is satisfiable if there exists a sat_witness for the problem. *)
+  predicate is_satisfiable (k':int) (pb:problem) = 
+      problem_valid pb
+   /\ exists sw:sat_witness. is_sat_witness k' pb sw
+   
+   
+  (*** Properties of the SAT encoding ***)
+ 
+  lemma firstNot :
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    problem_valid pb 
+    -> nested k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k') 
+    -> (exists j:int. (0 <=j < pb.k) /\ not sw.r[p][i][j])
+    -> let b = min_elt (filter (interval 0 pb.k) (fun j -> not sw.r[p][i][j])) in
+       (0 <= b < pb.k) /\ not sw.r[p][i][b]  /\ (forall j:int. (0 <=j < b) -> sw.r[p][i][j])
+        
+  lemma notThenNotPlus1 :
+    forall k':int. forall pb:problem. forall sw:sat_witness.  
+    problem_valid pb 
+    -> nested k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k') 
+    -> forall j:int. (0 <=j < pb.k-1)
+    -> not sw.r[p][i][j] -> not sw.r[p][i][j+1]
+      
+  lemma notThenNot :
+    forall k':int. forall pb:problem. forall sw:sat_witness.  
+    problem_valid pb 
+    -> nested k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k') 
+    -> forall j:int. (0 <=j < pb.k)
+    -> not sw.r[p][i][j] 
+    -> (forall l:int. (j <=l < pb.k) -> not sw.r[p][i][l])
+
+  lemma casesRPI:
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    problem_valid pb 
+    -> nested k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k') 
+    -> (forall j:int. (0 <=j < pb.k) -> sw.r[p][i][j])
+       \/ (exists j:int. (0 <=j < pb.k) /\ not sw.r[p][i][j])
+
+  lemma splitRPI: 
+    forall k':int. forall pb:problem. forall sw:sat_witness.  
+    problem_valid pb 
+    -> nested k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k') 
+    -> exists b:int.  ((0 <= b <= pb.k) /\ (forall j:int. (0 <=j < b) -> sw.r[p][i][j]) /\ (forall j:int. (b <=j < pb.k) -> not sw.r[p][i][j]) )
+      
+  lemma equivTXR : forall k':int. forall input:problem. forall sw:sat_witness. 
+      linkTXR k' input sw 
+   -> forall i,j,p,l : int. 0<=i<k' -> 0<=j<input.k ->  0<=p<input.n -> 0<=l<input.m 
+   -> (sw.t[p][i][j][l] <-> (sw.x[i][j][l] /\ sw.r[p][i][j]))
+      
+  lemma atMostOneElementBis : forall k':int. forall input:problem. forall sw:sat_witness. 
+       atMostOneElement k' input sw /\ linkTXR k' input sw 
+    -> forall p,i,j,a,b : int. 0<=p<input.n -> 0<=i<k' -> 0<=j<input.k ->  0<=a<input.m -> 0<=b<input.m 
+    -> a<>b 
+    -> (not sw.t[p][i][j][a]) \/ (not sw.t[p][i][j][b])
+      
+  lemma buildLMOK : 
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall i,j : int.  0<=i<k' -> 0<=j<pb.k -> (exists l:int. 0<=l<pb.m /\ sw.x[i][j][l])
+
+    
+end
+
+
+module Soundness
+
+  (* Proof that if the SAT encoding of a problem is satisfiable, 
+  then the DNF of the problem is a nested k-DNF *)
+
+  use int.Int
+  use seq.Seq
+  use set.Fset
+  use seq.ToFset
+  use SATEncoding
+  use Nested
+  
+  (* Construction of the nested_witness from the sat_witness *)
+  function build_nested_witness (k':int) (input:problem) (sw:sat_witness) : nested_witness
+
+  axiom sizeLM :
+   forall k':int. forall input:problem. forall sw:sat_witness.
+      let nw = build_nested_witness k' input sw in
+      length nw.lm = k'
+   /\ forall i: int. 0 <= i < length nw.lm -> length nw.lm[i] = input.k
+
+ 
+ (* OK thanks to buildLMOK of module SATEncoding*)
+   
+ axiom buildLM : 
+   forall k':int. forall input:problem. forall sw:sat_witness.
+      let nw = build_nested_witness k' input sw in
+      forall i,j : int.  0<=i<k' -> 0<=j<input.k -> (exists l:int. 0<=l<input.m /\ sw.x[i][j][l] /\ nw.lm[i][j]=(input.num_to_literal l))
+
+  axiom sizeRPI :
+   forall k':int. forall input:problem. forall sw:sat_witness.
+      let nw = build_nested_witness k' input sw in
+      length nw.rpi = input.n
+   /\ forall p: int. 0 <= p < input.n -> length nw.rpi[p] = k'
+      
+   
+  function srpij (sw:sat_witness) : int -> int -> int -> int= fun p -> fun i -> fun j -> if sw.r[p][i][j] then 1 else 0
+   
+  axiom buildRPI : 
+   forall k':int. forall input:problem. forall sw:sat_witness.
+      let nw = build_nested_witness k' input sw in
+      forall p,i: int. 0 <= p < input.n -> 0<=i<k' 
+      -> nw.rpi[p][i] = SI.sum (srpij sw p i) 0 input.k  
+  (* nested_witness_valid *)
+  
+  lemma L1 :
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> nested_witness_valid k' pb nw 
+  
+  (* All elements of the rpi matrix are smaller than k  *)
+  lemma L2 : 
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> (forall p: int.  forall i:int. 0 <= p < pb.d.length -> 0 <= i < k' ->  nw.rpi[p][i] <= pb.k)
+  
+
+   (* Each term of the DNF d is exactly defined by lm and rpi *)
+  lemma L3a0:
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k')
+    -> nw.rpi[p][i] <= pb.k
+      
+  lemma L3a1: 
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k')
+    -> forall j:int. (0 <=j < nw.rpi[p][i])
+    -> sw.r[p][i][j]
+      
+  lemma L3a2: 
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k')
+    -> forall j:int. (0 <=j < nw.rpi[p][i])
+    -> forall l:int. (0 <=l < pb.m)
+    -> sw.t[p][i][j][l] -> mem (pb.num_to_literal l) pb.d[p]
+        
+  lemma L3a3 :
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall i,j: int. (0 <= i < k') -> (0 <= j < pb.k) -> exists l:int. (0 <= l < pb.m) /\ (pb.num_to_literal l = nw.lm[i][j])
+  
+  lemma L3a:
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall i: int. (0 <= i < k')
+    -> forall j:int. (0 <=j < nw.rpi[p][i])
+    -> mem nw.lm[i][j] pb.d[p] 
+      
+  lemma L3b0 :
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall p: int. forall i:int. forall j:int. 
+       0 <= p < pb.d.length 
+    -> 0 <= i < k'
+    -> 0 <= j < pb.k 
+    -> sw.r[p][i][j]
+    -> 0 <=j < nw.rpi[p][i]
+      
+  lemma L3b : 
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall p: int. forall l:literal. 0 <= p < pb.d.length -> mem l pb.d[p] 
+    -> exists i:int. exists j:int. (0 <= i < k') /\ (0 <=j < nw.rpi[p][i]) /\ l=nw.lm[i][j]
+  
+  lemma L3 :
+    forall k':int. forall pb:problem. forall sw:sat_witness. 
+    let nw = (build_nested_witness k' pb sw) in 
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> forall p: int. (0 <= p < pb.d.length)  
+    -> forall l:literal. (mem l pb.d[p] <-> exists i:int. exists j :int. 0 <= i < k' /\ 0 <=j < nw.rpi[p][i] /\ l = nw.lm[i][j])
+     
+  (* Retrieval of the nested_witness *)
+  lemma build_nested_witness_is_nested_witness : 
+    forall k':int. forall pb:problem. forall sw:sat_witness.  
+    problem_valid pb 
+    -> is_sat_witness k' pb sw 
+    -> is_nested_witness k' pb (build_nested_witness k' pb sw)
+ 
+  goal soundness : forall k':int. forall pb:problem. is_satisfiable k' pb -> is_nested_k_kp_dnf k' pb 
+
+end
+
+
+
+module Completeness
+
+ (* Proof that if the DNF of a problem is a nested k-DNF, 
+  then the SAT encoding of the problem is satisfiable *)
+
+  use int.Int
+  use seq.Seq
+  use set.Fset
+  use seq.ToFset
+  use SATEncoding
+  use Nested
+  
+  (* Construction of the sat_witness from the nested_witness *)
+  function build_satisfiable_witness (k':int) (input:problem) (nw:nested_witness) : sat_witness
+  
+  axiom size :
+   forall k':int. forall input:problem. forall nw:nested_witness.
+      let sw = build_satisfiable_witness k' input nw in 
+      sat_witness_valid k' input sw
+   
+  axiom buildX : 
+   forall k':int. forall input:problem. forall nw:nested_witness.
+      let sw = build_satisfiable_witness k' input nw in 
+      forall i,j,l : int. 0<=i<k' -> 0<=j<input.k -> 0<=l<input.m 
+      -> sw.x[i][j][l]<-> nw.lm[i][j]=input.num_to_literal l
+   
+  axiom buildR : 
+   forall k':int. forall input:problem. forall nw:nested_witness.
+      let sw = build_satisfiable_witness k' input nw in 
+      forall i,j,p : int. 0<=i<k' -> 0<=j<input.k ->  0<=p<input.n 
+      -> sw.r[p][i][j] <-> j< nw.rpi[p][i]
+   
+  axiom buildT : 
+   forall k':int. forall input:problem. forall nw:nested_witness.
+      let sw = build_satisfiable_witness k' input nw in
+      forall i,j,p,l : int. 0<=i<k' -> 0<=j<input.k ->  0<=p<input.n -> 0<=l<input.m 
+      -> sw.t[p][i][j][l] <-> sw.x[i][j][l] /\ sw.r[p][i][j]
+      
+  (*** All the clauses are satisfied ***)
+  
+  (* The sat_witness is valid *)
+  lemma L1 : 
+    forall k':int. forall input:problem. forall nw:nested_witness. 
+      let sw = build_satisfiable_witness k' input nw in 
+    problem_valid input 
+    -> is_nested_witness k' input nw 
+    -> sat_witness_valid k' input sw
+  
+  (* Each element of the matrix has at least one literal *)   
+  lemma L2 : 
+    forall k':int. forall input:problem. forall nw:nested_witness. 
+      let sw = build_satisfiable_witness k' input nw in 
+    problem_valid input 
+    -> is_nested_witness k' input nw 
+    -> atLeastOneElement k' input sw
+  
+  (* Each element of the matrix has at most one literal *)  
+  lemma L3 : 
+    forall k':int. forall input:problem. forall nw:nested_witness. 
+      let sw = build_satisfiable_witness k' input nw in 
+    problem_valid input 
+    -> is_nested_witness k' input nw 
+    -> atMostOneElement k' input sw
+  
+  (* If the element ℓi,j+1 is used in the term p, then the element ℓi,j is also used in this term (Nested) *)  
+  lemma L4 : 
+    forall k':int. forall input:problem. forall nw:nested_witness. 
+      let sw = build_satisfiable_witness k' input nw in 
+    problem_valid input 
+    -> is_nested_witness k' input nw 
+    -> nested k' input sw
+  
+  (* Tp,i,j,l is true iff Xi,j,l is true and Rp,i,j is true *)  
+  lemma L5 : 
+    forall k':int. forall input:problem. forall nw:nested_witness. 
+      let sw = build_satisfiable_witness k' input nw in 
+    problem_valid input 
+    -> is_nested_witness k' input nw 
+    -> linkTXR k' input sw
+  
+  (* Identification of the literals present in a given term and those that are absent *)  
+  lemma L6 : 
+    forall k':int. forall input:problem. forall nw:nested_witness. 
+      let sw = build_satisfiable_witness k' input nw in 
+    problem_valid input 
+    -> is_nested_witness k' input nw 
+    -> buildTMem k' input sw
+    
+  lemma L7 : 
+    forall k':int. forall input:problem. forall nw:nested_witness. 
+      let sw = build_satisfiable_witness k' input nw in 
+    problem_valid input 
+    -> is_nested_witness k' input nw 
+    -> buildTNotMem k' input sw
+  
+  (* Retrieval of the sat_witness *)
+  lemma build_satisfiable_witness_is_sat_witness : 
+    forall k':int. forall pb:problem. forall nw:nested_witness. 
+    problem_valid pb 
+    -> is_nested_witness k' pb nw 
+    -> is_sat_witness k' pb (build_satisfiable_witness k' pb nw)
+  
+  goal completness : forall k':int. forall pb:problem. is_nested_k_kp_dnf k' pb -> is_satisfiable k' pb
+  
+end
+
