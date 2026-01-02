@@ -6,7 +6,7 @@ import pandas as pd
 import sys
 
 def main(args):
-    maxsat_path = "./NuWLS-c-IBR-2024/bin/NuWLS-c-IBR_static" # Update the path to NuWLS MaxSAT
+    maxsat_path = "./NuWLS-c-IBR/bin/NuWLS-c-IBR_static" # Update the path to NuWLS MaxSAT
     if len(args) == 5:
         # Reading the data
         data_file = args[0]
@@ -36,8 +36,10 @@ def main(args):
         print("The main program requires 5 or 6 arguments : \n"
         "1. If you have a single data file:\n"
         "   python3 main.py <data_file> <nb_features> <k> <class_target> <timeout> \n"
+        "   Example : python3 main.py data/car.data 6 2 1 120\n"
         "2. If you have separate train and test files:\n"
-        "   python3 main.py <train_file> <test_file> <nb_features> <k> <class_target> <timeout>")
+        "   python3 main.py <train_file> <test_file> <nb_features> <k> <class_target> <timeout>\n"
+        "   Example : python3 main.py data/monks-1.train data/monks-1.test 6 2 1 120\n")
         sys.exit(1)
     Xdata = train_data[features] 
     Ydata = train_data[class_name]

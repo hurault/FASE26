@@ -1,15 +1,22 @@
 #!/bin/bash
 
+tag="$1"
+t="$2" 
+
 run_dataset() {
     dataset_train=$1
     dataset_test=$2
     attr_count=$3
 
     for k in {2..7}; do
-        if [ "$k" -eq 7 ]; then
-            timeout=180
+        if [ "$tag" == "-t" ] ; then
+            timeout="$t"
+        else 
+        if [ "$k" -eq 7 ] ; then
+            timeout="180"
         else
-            timeout=120
+            timeout="120"
+        fi
         fi
 
         for class_target in 1 0; do
@@ -29,7 +36,7 @@ run_dataset() {
 # ------------------------------
 #   DATASETS
 # ------------------------------
-
+echo "Heure de début : $(date +"%H:%M:%S")"
 # balance-scale
 run_dataset "data/balance-scale.data" "NONE" 4
 # car
@@ -44,3 +51,4 @@ run_dataset "data/monks-3.train" "data/monks-3.test" 6
 run_dataset "data/SPECT.train" "data/SPECT.test" 22
 # tic-tac-toe
 run_dataset "data/tic-tac-toe.data" "NONE" 9
+echo "Heure de fin : $(date +"%H:%M:%S")"
