@@ -1,25 +1,33 @@
-# README
-
 ## Project Structure
 
-### `data/`
+- `data/`
 Directory containing the datasets used by the program.  
-**Important:**  
-- Each data file must have the **class label in the first column**.
+**Important:** Each data file must have the **class label in the first column**.
 
-### `wcnf/`
+- `wcnf/`
 Directory where temporary files are stored. These files contain the clauses sent to the MaxSAT solver.
 
-### `to_dnf.py`
+- `to_dnf.py`
 Module responsible for generating clauses (conversion to DNF).
 
-### `main.py`
-Main script of the project. 
+- `main.py`
+Main script of the project.
 
-Needs the installation of the MaxSAT solver in the Experiments directory 
-  Solver used: **NuWLS-c-IBR**  
-  Documentation: https://maxsat-evaluations.github.io/2024/descriptions.html
-- Clause generation and invocation of `to_dnf`.
+- `Dockerfile`
+File used to build the Docker image and listing the dependencies.
+
+- `replay_exp.sh`
+Replay the experiments of the paper
+
+## Dependencies
+In addition to Python with the libraries NumPy, pandas, scikit-learn, and SymPy, the program requires a MaxSAT solver.
+
+The MaxSAT solver used is **NuWLS-c-IBR**  
+Documentation: https://maxsat-evaluations.github.io/2024/descriptions.html
+
+The path to the solver must be set in the `maxsat_path` variable in the `main.py` file.
+
+## Usage of main.py
 
 The program accepts **5 or 6 parameters**:
 
@@ -41,7 +49,7 @@ The program accepts **5 or 6 parameters**:
 5. **Target class**  
    - Class to predict: **0 or 1**.
 
-Result : the accuracies of a Random Forest (max_depth = k) and a nested (k, k)-DNF with k = 2 trained on the dataset.
+Result : the accuracies of a Random Forest (max_depth = k) and a nested (k, k)-DNF trained on the dataset.
 
 ## Replay the FASE 2026 paper results
 
@@ -49,4 +57,4 @@ Please note that the results of the experiments may vary when executed on differ
 
 To replay the experiments with the same parameters as in the paper, run the script **./replay_exp.sh**.
 The experiments can also be run by specifying a timeout using the -t option, for example **./replay_exp.sh -t 200**.
-All experiments, with the paper configuration, take around 2h30 on the computer described previously. They take xxh with a timeout of 500.
+All experiments, with the paper configuration, take around 2h30 on the computer described previously.
