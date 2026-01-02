@@ -20,4 +20,4 @@ COPY encoding-ok.mlw .
 COPY encoding-ok encoding-ok
 
 # Commande par défaut
-CMD ["bash", "-c", "eval $(opam env) && why3 ide encoding-ok.mlw"]
+CMD ["bash", "-c", "eval $(opam env) && why3 replay encoding-ok"]
