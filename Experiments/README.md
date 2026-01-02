@@ -58,3 +58,12 @@ Please note that the results of the experiments may vary when executed on differ
 To replay the experiments with the same parameters as in the paper, run the script **./replay_exp.sh**.
 The experiments can also be run by specifying a timeout using the -t option, for example **./replay_exp.sh -t 200**.
 All experiments, with the paper configuration, take around 2h30 on the computer described previously.
+
+## Docker
+A docker is available here : https://filesender.renater.fr/?s=download&token=6cc997f7-2958-4731-92c8-3f8ce4022297
+
+Load the docker with `docker load -i fase_exp.tar`
+
+Run the docker with `docker run --rm -it fase_exp bash`
+
+you will then be able to run the `docker run --rm -it fase_why3 bash` or the `main.py` file like explained above.
