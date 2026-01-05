@@ -1,14 +1,13 @@
 ## Project Structure
 
 - `data/`
-Directory containing the datasets used by the program.  
-**Important:** Each data file must have the **class label in the first column**.
+Directory containing the datasets used in the experiments. The first column of each file must be the class label.
 
 - `wcnf/`
-Directory where temporary files are stored. These files contain the clauses sent to the MaxSAT solver.
+Directory containing the WCNF file used by the MaxSAT solver.
 
 - `to_dnf.py`
-Module responsible for generating clauses (conversion to DNF).
+The source code of the project.
 
 - `main.py`
 Main script of the project.
@@ -27,29 +26,20 @@ Documentation: https://maxsat-evaluations.github.io/2024/descriptions.html
 
 The path to the solver must be set in the `maxsat_path` variable in the `main.py` file.
 
-## Usage of main.py
+## Usage
 
-The program accepts **5 or 6 parameters**:
+The program accepts **5 or 6 parameters**, depending on whether the dataset is provided as a single file or as separate training and test files :
 
-1. **Dataset path**  
-   - Can be one or two files depending if the testing an training dataset are split.  
-   - If only one file is provided, the script will automatically split it.
+```
+python3 main.py <data_file> <nb_features> <k> <class_target> <timeout>
+```
+```
+python3 main.py <train_file> <test_file> <nb_features> <k> <class_target> <timeout>
+```
 
-2. **Number of features (`number_F`)**  
-   - Number of dataset features to consider.  
-   - **Warning:** Must match the actual number of features in the dataset.
+- **Important :** The timeout represents the maximum solving time for the MaxSAT solver and can significantly impact its results.
 
-3. **Timeout**  
-   - Maximum solving time for the MaxSAT solver.  
-   - **Important:** The timeout can significantly impact the solver’s results.
-
-4. **k parameter**  
-   - Must be **greater than 2**.
-
-5. **Target class**  
-   - Class to predict: **0 or 1**.
-
-Result : the accuracies of a Random Forest (max_depth = k) and a nested (k, k)-DNF trained on the dataset.
+- **Output :** The accuracies of a Random Forest (max_depth = k) and a Nested (k,k)-DNF trained on the dataset.
 
 ## Replay the FASE 2026 paper results
 
