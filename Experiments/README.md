@@ -1,7 +1,7 @@
 ## Project Structure
 
 - `data/`
-Directory containing the datasets used in the experiments. The first column of each file must be the class label.
+Directory containing the datasets used in the experiments. The first column of each file is the class label.
 
 - `wcnf/`
 Directory containing the WCNF file used by the MaxSAT solver.
