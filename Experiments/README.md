@@ -45,7 +45,7 @@ python3 main.py <train_file> <test_file> <nb_features> <k> <class_target> <timeo
 
 Please note that the results of the experiments may vary when executed on different machines with different hardware resources. This variability is due to the use of a MaxSAT solver with a timeout, which can lead to different outcomes depending on available computational resources. The results reported in the paper were obtained on a Dell Inc. Precision 3591 with 32 GiB of RAM and Intel® Core™ Ultra 7 165H × 22, running Ubuntu 24.04.3 LTS (64 bits). Hence, you may need to extend the timeout beyond the value we used to achieve the same or better results.
 
-To replay the experiments with the same parameters as in the paper, run the script **./replay_exp.sh**.
+To replay the experiments (table 4 of the paper) with the same parameters as in the paper, run the script **./replay_exp.sh**.
 The experiments can also be run by specifying a timeout using the -t option, for example **./replay_exp.sh -t 200**.
 All experiments, with the paper configuration, take around 2h30 on the computer described previously.
 
