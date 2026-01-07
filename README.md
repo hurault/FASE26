@@ -3,4 +3,3 @@
 The `Experiments` directory contains the source code and datasets, while the `Why3` directory contains the files required to replay the proofs of correctness and completeness of the SAT encoding.
 For more details, please refer to the `README` files present in each directory.
 
-v1.0.0 : https://doi.org/10.5281/zenodo.18176078
