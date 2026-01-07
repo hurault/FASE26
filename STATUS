@@ -1,5 +1,5 @@
 We are applying for the following badge(s):
-- Available: since the code is hosted in a public GitHub repository
+- Available: since the code is hosted in a public GitHub repository (https://github.com/hurault/FASE26/)
 - Functional
     The two main results of the paper are the proofs of SAT encoding and the comparison with Random Forests (Table 4). 
     The Why3 directory provides all the proofs and allows them to be replayed. 
