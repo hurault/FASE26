@@ -56,4 +56,4 @@ Load the docker with `docker load -i fase_exp.tar`
 
 Run the docker with `docker run --rm -it fase_exp bash`
 
-you will then be able to run the `./replay_exp.sh` script or the `main.py` file like explained above.
+You will then be able to run the `./replay_exp.sh` script or the `main.py` file like explained above.
