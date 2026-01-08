@@ -1,5 +1,7 @@
 FROM ocaml/opam:ubuntu-lts
 
+# Mise à jour du system
+RUN sudo apt update
 # Installer les dépendances système
 RUN sudo apt -y install \
     libgmp-dev linux-libc-dev pkg-config cvc5=1.1.2-1build1 python3 \
