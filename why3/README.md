@@ -8,6 +8,10 @@ Why3, Coq, CVC5, Z3, and Alt-Ergo.
 For version numbers, please refer to the `Dockerfile`.
 
 ## Replaying the proofs
+### Command line
+`why3 replay encoding-ok` will replay the proof.
+
+### Why3 IDE
 `why3 ide encoding-ok.mlw` will launch the Why3 IDE with all proofs completed.
 
 1. **Forget the proofs**  
@@ -15,3 +19,12 @@ For version numbers, please refer to the `Dockerfile`.
 
 2. **Replay all proofs**  
    `Tool → Replay valid obsolete proofs`
+   
+## Docker
+A docker is available here : https://cloud.irit.fr/s/oXYNl0dxqZZpcb4
+
+Load the docker with `docker load -i fase_why3.tar`
+
+Run the docker with `docker run --rm -it fase_why3 bash`
+
+You will then be able to run the `why3 replay encoding-ok` to replay the proof. Using the Why3 IDE can be more difficult due to issues with the connection between the graphical server and Docker.
