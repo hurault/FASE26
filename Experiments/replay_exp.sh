@@ -36,7 +36,7 @@ run_dataset() {
 # ------------------------------
 #   DATASETS
 # ------------------------------
-echo "Heure de début : $(date +"%H:%M:%S")"
+echo "Start : $(date +"%H:%M:%S")"
 # balance-scale
 run_dataset "data/balance-scale.data" "NONE" 4
 # car
@@ -51,4 +51,4 @@ run_dataset "data/monks-3.train" "data/monks-3.test" 6
 run_dataset "data/SPECT.train" "data/SPECT.test" 22
 # tic-tac-toe
 run_dataset "data/tic-tac-toe.data" "NONE" 9
-echo "Heure de fin : $(date +"%H:%M:%S")"
+echo "End : $(date +"%H:%M:%S")"
