@@ -1,7 +1,7 @@
-We are applying for the following badge(s):
-- Available: since the code is hosted in a public GitHub repository (https://github.com/hurault/FASE26/)
+We are applying for the following badges:
+- Available: the code is hosted in a public GitHub repository (https://github.com/hurault/FASE26/)
 - Functional
     The two main results of the paper are the proofs of SAT encoding and the comparison with Random Forests (Table 4). 
     The Why3 directory provides all the proofs and allows them to be replayed. 
-    The Experiments directory contains the Python code to reproduce the experiments that led to the construction of Table 4.
-    The READMEs in both subdirectories, as well as the comments in the source code, should normally be sufficient to use the provided sources.
+    The Experiments directory contains the Python code and the data to reproduce the experiments that led to the construction of Table 4.
+    The READMEs in both subdirectories, as well as the comments in the source code, should be sufficient to use the provided sources.
