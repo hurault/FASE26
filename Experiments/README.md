@@ -26,6 +26,24 @@ Documentation: https://maxsat-evaluations.github.io/2024/descriptions.html
 
 The path to the solver must be set in the `maxsat_path` variable in the `main.py` file.
 
+## Installation (Docker is also available)
+1. Install python
+2. Install the librairies 
+- `pip install numpy pandas scikit-learn sympy`
+3. Copy the **NuWLS-c-IBR** MaxSAT solver in the `NuWLS-c-IBR` directory
+
+## Smoke test
+`python3 main.py data/car.data 6 2 1 120`
+
+shoud print
+```text
+--------------------------------- Random Forest max_depth = 2
+Test Accuracy :  78.61 %
+--------------------------------- Nested (k,k)-DNF with k = 2
+Test Accuracy :  87.86 %
+```
+Be careful: since a timeout comes into play, depending on the machine’s performance, the percentage may be slightly different.
+
 ## Usage
 
 The program accepts **5 or 6 parameters**, depending on whether the dataset is provided as a single file or as separate training and test files :
