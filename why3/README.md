@@ -44,4 +44,7 @@ Load the docker with `docker load -i fase_why3.tar`
 
 Run the docker with `docker run --rm -it fase_why3 bash`
 
-You will then be able to run the `why3 replay encoding-ok` to replay the proof. Using the Why3 IDE can be more difficult due to issues with the connection between the graphical server and Docker.
+You will then be able to run the `why3 replay encoding-ok` to replay the proof. 
+If the replay is OK, you will see : `96/96 (replay OK)`
+
+Using the Why3 IDE can be more difficult due to issues with the connection between the graphical server and Docker. If you don’t have any graphical display issues, you can replay the proofs as described in the section "Replaying the proofs".
