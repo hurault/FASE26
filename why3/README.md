@@ -7,6 +7,23 @@
 Why3, Coq, CVC5, Z3, and Alt-Ergo.  
 For version numbers, please refer to the `Dockerfile`.
 
+## Installation with opam (Docker is also available)
+1. Install opam (https://opam.ocaml.org/)
+2. Create an OCaml switch
+`opam switch create 5.3.0`
+3. Install Why3, Coq, CVC5, Z3, and Alt-Ergo.
+- `opam install why3.1.8.1 why3-ide.1.8.1 z3.4.15.2 alt-ergo.2.6.2 coq.8.20.1 why3-coq.1.8.1`
+- `sudo apt install cvc5`
+5. Finalize the installation
+- `why3 config detect`
+
+## Smoke test
+`why3 config detect` must display at least
+- Found prover Alt-Ergo version 2.6.2, OK.
+- Found prover CVC5 version 1.1.2, OK.
+- Found prover Coq version 8.20.1, OK.
+- There may be warnings about Z3, but they do not cause any issues for what follows.
+
 ## Replaying the proofs
 ### Command line
 `why3 replay encoding-ok` will replay the proof.
